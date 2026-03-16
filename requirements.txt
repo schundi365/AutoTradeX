@@ -1,5 +1,5 @@
 # ── STABLE CORE ──────────────────────────────────────────
-pydantic==2.9.2
+pydantic==2.12.5
 pydantic-settings==2.5.2
 apscheduler==3.10.4
 loguru==0.7.2
