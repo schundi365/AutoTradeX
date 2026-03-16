@@ -12,7 +12,7 @@ ib-insync==0.9.86             # Interactive Brokers
 
 # ── MARKET DATA & FEEDS ──────────────────────────────────
 yfinance==0.2.44
-pandas-ta==0.3.14b            # Technical indicators
+pandas-ta==0.4.71b0            # Technical indicators
 newsapi-python==0.2.7
 requests==2.32.3
 feedparser==6.0.11            # RSS feeds (Reuters, BBC, etc.)
@@ -24,8 +24,8 @@ transformers==4.45.0          # Local sentiment models
 torch==2.4.1
 
 # ── DATA & STORAGE ───────────────────────────────────────
-pandas==2.2.3
-numpy==2.1.1
+pandas==3.0.1
+numpy==2.4.3
 sqlalchemy==2.0.35
 asyncpg==0.30.0               # Async PostgreSQL
 redis==5.1.1                  # Cache & pub/sub
