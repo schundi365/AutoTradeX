@@ -1,0 +1,5 @@
+﻿FROM apex-trader
+PARAMETER num_ctx 2048
+PARAMETER num_predict 512
+PARAMETER temperature 0.1
+PARAMETER repeat_penalty 1.1

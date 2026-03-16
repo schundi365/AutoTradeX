@@ -1,0 +1,57 @@
+version: 2
+updates:
+  # Python dependencies
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    open-pull-requests-limit: 10
+    reviewers:
+      - "apex-team"
+    labels:
+      - "dependencies"
+      - "security"
+    commit-message:
+      prefix: "deps"
+      include: "scope"
+    
+    # Group updates for related packages
+    groups:
+      fastapi:
+        patterns:
+          - "fastapi*"
+          - "uvicorn*"
+          - "starlette*"
+      
+      data-science:
+        patterns:
+          - "pandas*"
+          - "numpy*"
+          - "scikit-learn*"
+      
+      ml-frameworks:
+        patterns:
+          - "xgboost*"
+          - "lightgbm*"
+          - "stable-baselines3*"
+      
+      testing:
+        patterns:
+          - "pytest*"
+          - "hypothesis*"
+    
+    # Ignore specific versions if needed
+    ignore:
+      - dependency-name: "pandas"
+        versions: ["2.0.0"]  # Example: skip problematic version
+
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "dependencies"
+      - "github-actions"

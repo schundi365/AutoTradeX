@@ -1,0 +1,246 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      
+      - name: Cache pip packages
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+      
+      - name: Install dependencies
+        run: |
+          pip install flake8 mypy bandit black isort
+          pip install -r requirements.txt
+      
+      - name: Run Black format check
+        run: black --check core/ agents/ api/
+      
+      - name: Run isort import check
+        run: isort --check-only core/ agents/ api/
+      
+      - name: Run flake8
+        run: flake8 core/ agents/ api/ --max-line-length=120 --extend-ignore=E203,W503
+      
+      - name: Run mypy type checking
+        run: mypy core/ agents/ api/ --ignore-missing-imports --no-strict-optional
+      
+      - name: Run Bandit security scan
+        run: |
+          bandit -r core/ agents/ api/ -f json -o bandit-report.json
+          bandit -r core/ agents/ api/ -f screen
+        continue-on-error: true
+      
+      - name: Upload Bandit report
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: bandit-report
+          path: bandit-report.json
+
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      
+      - name: Install security tools
+        run: pip install safety pip-audit
+      
+      - name: Run Safety dependency check
+        run: |
+          safety check --json --output safety-report.json || true
+          safety check --full-report
+        continue-on-error: true
+      
+      - name: Run pip-audit
+        run: |
+          pip-audit -r requirements.txt --format json --output audit-report.json || true
+          pip-audit -r requirements.txt
+        continue-on-error: true
+      
+      - name: Upload security reports
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: security-reports
+          path: |
+            safety-report.json
+            audit-report.json
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      
+      - name: Cache pip packages
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+      
+      - name: Install dependencies
+        run: |
+          pip install pytest pytest-cov pytest-asyncio hypothesis pytest-timeout
+          pip install -r requirements.txt
+      
+      - name: Run unit tests with coverage
+        run: |
+          pytest tests/unit/ -v \
+            --cov=core --cov=agents --cov=api \
+            --cov-report=xml --cov-report=html --cov-report=term
+      
+      - name: Check coverage threshold
+        run: |
+          coverage report --fail-under=85
+      
+      - name: Run property-based tests
+        run: |
+          pytest tests/properties/ -v \
+            --hypothesis-seed=12345 \
+            --hypothesis-show-statistics
+      
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./coverage.xml
+          flags: unittests
+          name: codecov-umbrella
+      
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: coverage-report
+          path: htmlcov/
+
+  integration:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: timescale/timescaledb:latest-pg15
+        env:
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: test_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      
+      - name: Install dependencies
+        run: |
+          pip install pytest pytest-asyncio
+          pip install -r requirements.txt
+      
+      - name: Wait for services
+        run: |
+          sleep 10
+      
+      - name: Run integration tests
+        run: pytest tests/integration/ -v --timeout=300
+        env:
+          TIMESCALE_URL: postgresql://test_user:test_password@localhost:5432/test_db
+          REDIS_URL: redis://localhost:6379
+          TESTING: true
+
+  performance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      
+      - name: Install dependencies
+        run: |
+          pip install pytest pytest-benchmark
+          pip install -r requirements.txt
+      
+      - name: Run performance benchmarks
+        run: |
+          pytest tests/performance/ -v \
+            --benchmark-only \
+            --benchmark-json=benchmark-results.json
+      
+      - name: Store benchmark results
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          tool: 'pytest'
+          output-file-path: benchmark-results.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          auto-push: true
+          alert-threshold: '110%'
+          comment-on-alert: true
+          fail-on-alert: true
+
+  docker-security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Build Docker image
+        run: docker build -t apex-bot:test .
+        if: hashFiles('Dockerfile') != ''
+      
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'apex-bot:test'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+        if: hashFiles('Dockerfile') != ''
+      
+      - name: Upload Trivy results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: 'trivy-results.sarif'
+        if: hashFiles('Dockerfile') != ''

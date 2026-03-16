@@ -1,0 +1,188 @@
+<!-- ═══════════════════════════════════════════════════════
+  APEX HEALTH TAB - INTERACTIVE ENHANCEMENTS
+  Add these sections to the APEX Health panel in trading-bot-dashboard.html
+═══════════════════════════════════════════════════════ -->
+
+<!-- Add this at the top of the APEX Health panel, before KPI Row -->
+<div class="sec-card" style="margin-bottom:20px">
+  <div class="sec-header">
+    <span class="sec-title"><span>//</span> REAL-TIME MONITORING</span>
+    <div style="display:flex;align-items:center;gap:12px">
+      <span id="apex-last-update" style="font-size:10px;color:var(--text-muted);font-family:'Share Tech Mono',monospace">--</span>
+      <button class="btn btn-outline" id="apex-manual-refresh" style="padding:4px 10px;font-size:10px">↻ REFRESH</button>
+    </div>
+  </div>
+  <div class="sec-body">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:20px">
+      <!-- Auto-refresh toggle -->
+      <div style="display:flex;align-items:center;gap:10px">
+        <label style="font-size:12px;color:var(--text-secondary);cursor:pointer;display:flex;align-items:center;gap:8px">
+          <input type="checkbox" id="apex-auto-refresh-toggle" style="cursor:pointer">
+          <span>Auto-refresh</span>
+        </label>
+        <select id="apex-refresh-interval" class="config-input" style="width:auto;padding:4px 8px;font-size:11px">
+          <option value="5">Every 5s</option>
+          <option value="10" selected>Every 10s</option>
+          <option value="30">Every 30s</option>
+          <option value="60">Every 1m</option>
+        </select>
+      </div>
+      
+      <!-- Quick actions -->
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-outline" id="apex-test-tiers" style="padding:6px 12px;font-size:11px;border-color:var(--accent-blue);color:var(--accent-blue)">
+          🧪 Test LLM Tiers
+        </button>
+        <button class="btn btn-outline" id="apex-restart-ollama" style="padding:6px 12px;font-size:11px;border-color:var(--accent-amber);color:var(--accent-amber)">
+          🔄 Restart Ollama
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add this after the Performance Metrics Grid -->
+<div class="grid-2" style="margin-top:20px">
+  
+  <!-- LLM Tier Usage Breakdown -->
+  <div class="sec-card">
+    <div class="sec-header">
+      <span class="sec-title"><span>//</span> LLM TIER USAGE (24H)</span>
+    </div>
+    <div class="sec-body">
+      <canvas id="apex-tier-breakdown-chart" style="width:100%;height:280px"></canvas>
+      <div style="margin-top:12px;font-size:10px;color:var(--text-muted);text-align:center">
+        Distribution of LLM calls across tiers
+      </div>
+    </div>
+  </div>
+
+  <!-- Latency Comparison -->
+  <div class="sec-card">
+    <div class="sec-header">
+      <span class="sec-title"><span>//</span> LATENCY BY TIER</span>
+    </div>
+    <div class="sec-body">
+      <canvas id="apex-tier-latency-chart" style="width:100%;height:280px"></canvas>
+      <div style="margin-top:12px;font-size:10px;color:var(--text-muted);text-align:center">
+        Average response time per LLM tier
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Alert History Panel -->
+<div class="sec-card" style="margin-top:20px">
+  <div class="sec-header">
+    <span class="sec-title"><span>//</span> ALERT HISTORY</span>
+    <button class="btn btn-outline" onclick="if(window.apexHealthMonitor) window.apexHealthMonitor.alertManager.clearAlerts()" style="padding:4px 10px;font-size:10px">
+      🗑️ CLEAR
+    </button>
+  </div>
+  <div class="sec-body">
+    <div id="apex-alert-history" style="max-height:300px;overflow-y:auto">
+      <div style="text-align:center;color:var(--text-muted);padding:20px">No alerts</div>
+    </div>
+  </div>
+</div>
+
+<!-- Add this script tag at the end of the HTML file, before </body> -->
+<script src="apex-health-interactive.js"></script>
+
+<!-- Initialize the monitor when APEX Health tab is shown -->
+<script>
+  // Hook into the showPanel function to initialize monitor
+  const originalShowPanel = window.showPanel;
+  window.showPanel = function(id) {
+    originalShowPanel(id);
+    
+    // Initialize APEX Health Monitor when tab is shown
+    if (id === 'apex-health' && window.apexHealthMonitor && !window.apexHealthMonitor.initialized) {
+      window.apexHealthMonitor.init();
+      window.apexHealthMonitor.initialized = true;
+    }
+  };
+</script>
+
+<!-- ═══════════════════════════════════════════════════════
+  STYLING FOR NEW COMPONENTS
+═══════════════════════════════════════════════════════ -->
+<style>
+  /* Auto-refresh toggle styling */
+  input[type="checkbox"] {
+    appearance: none;
+    width: 40px;
+    height: 20px;
+    background: var(--bg-deep);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    position: relative;
+    cursor: pointer;
+    transition: all 0.3s;
+  }
+
+  input[type="checkbox"]:checked {
+    background: var(--accent-green);
+    border-color: var(--accent-green);
+  }
+
+  input[type="checkbox]::before {
+    content: '';
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--text-primary);
+    top: 1px;
+    left: 1px;
+    transition: all 0.3s;
+  }
+
+  input[type="checkbox"]:checked::before {
+    left: 21px;
+  }
+
+  /* Pulse animation for online status */
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+  }
+
+  .status-online {
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  /* Alert panel scrollbar */
+  #apex-alert-history::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  #apex-alert-history::-webkit-scrollbar-track {
+    background: var(--bg-deep);
+  }
+
+  #apex-alert-history::-webkit-scrollbar-thumb {
+    background: var(--border-bright);
+    border-radius: 3px;
+  }
+
+  #apex-alert-history::-webkit-scrollbar-thumb:hover {
+    background: var(--text-muted);
+  }
+
+  /* Chart containers */
+  canvas {
+    max-height: 280px;
+  }
+
+  /* Button hover effects */
+  .btn-outline:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  }
+
+  .btn-outline:active {
+    transform: translateY(0);
+  }
+</style>

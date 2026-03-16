@@ -1,0 +1,112 @@
+version: '3.9'
+
+services:
+
+  # ── APEX Bot API + Agent Loop ──────────────────────────
+  apex_bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: apex_bot
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - APP_ENV=${APP_ENV:-paper}
+      - DATABASE_URL=postgresql+asyncpg://apex:${POSTGRES_PASSWORD:-apex123}@postgres:5432/apex_bot
+      - REDIS_URL=redis://redis:6379/0
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./logs:/app/logs
+      - ./config:/app/config
+    networks:
+      - apex_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ── PostgreSQL + TimescaleDB ───────────────────────────
+  postgres:
+    image: timescale/timescaledb:latest-pg16
+    container_name: apex_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: apex_bot
+      POSTGRES_USER: apex
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-apex123}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init_db.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - apex_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U apex"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Redis (cache + pub/sub) ────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: apex_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    networks:
+      - apex_net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      retries: 3
+
+  # ── Grafana (monitoring dashboard) ────────────────────
+  grafana:
+    image: grafana/grafana:latest
+    container_name: apex_grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
+    networks:
+      - apex_net
+
+  # ── Prometheus (metrics) ──────────────────────────────
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: apex_prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    networks:
+      - apex_net
+
+volumes:
+  postgres_data:
+  redis_data:
+  grafana_data:
+  prometheus_data:
+
+networks:
+  apex_net:
+    driver: bridge

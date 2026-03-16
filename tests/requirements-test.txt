@@ -1,0 +1,5 @@
+# Testing dependencies for property-based tests
+pytest>=7.4.0
+hypothesis>=6.90.0
+pytest-asyncio>=0.21.0
+pytest-cov>=4.1.0

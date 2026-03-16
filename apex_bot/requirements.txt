@@ -1,0 +1,54 @@
+# ── CORE FRAMEWORK ──────────────────────────────────────
+langchain==0.2.16
+langgraph==0.2.28
+anthropic==0.34.2
+openai==1.51.0
+
+# ── BROKER INTEGRATIONS ──────────────────────────────────
+MetaTrader5==5.0.4424        # MT5 (Windows only; use mock on Linux/Mac)
+ccxt==4.3.91                  # 100+ crypto exchanges
+alpaca-py==0.30.1             # Stocks via Alpaca
+ib-insync==0.9.86             # Interactive Brokers
+
+# ── MARKET DATA & FEEDS ──────────────────────────────────
+yfinance==0.2.44
+pandas-ta==0.3.14b            # Technical indicators
+newsapi-python==0.2.7
+requests==2.32.3
+feedparser==6.0.11            # RSS feeds (Reuters, BBC, etc.)
+gdelt==0.1.10                 # GDELT geopolitical database
+
+# ── AI & NLP ─────────────────────────────────────────────
+anthropic==0.34.2
+transformers==4.45.0          # Local sentiment models
+torch==2.4.1
+
+# ── DATA & STORAGE ───────────────────────────────────────
+pandas==2.2.3
+numpy==2.1.1
+sqlalchemy==2.0.35
+asyncpg==0.30.0               # Async PostgreSQL
+redis==5.1.1                  # Cache & pub/sub
+timescaledb                   # Time-series extension (install via SQL)
+
+# ── API & WEBSOCKET SERVER ───────────────────────────────
+fastapi==0.115.0
+uvicorn==0.31.0
+websockets==13.1
+python-dotenv==1.0.1
+
+# ── BACKTESTING ──────────────────────────────────────────
+vectorbt==0.26.2
+backtrader==1.9.78.123
+
+# ── SCHEDULING & ASYNC ───────────────────────────────────
+apscheduler==3.10.4
+asyncio-throttle==1.0.2
+
+# ── MONITORING & LOGGING ────────────────────────────────
+loguru==0.7.2
+prometheus-client==0.21.0
+
+# ── NOTIFICATIONS ────────────────────────────────────────
+python-telegram-bot==21.6
+slack-sdk==3.33.0

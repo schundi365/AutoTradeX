@@ -1,0 +1,40 @@
+# APEX Bot — RunPod Serverless GPU Image
+#
+# Build & push (one-time setup):
+#   docker build -f Dockerfile.runpod -t <your-dockerhub>/apex-runpod:latest .
+#   docker push <your-dockerhub>/apex-runpod:latest
+#
+# Then create a RunPod Serverless endpoint:
+#   https://www.runpod.io/console/serverless → New Endpoint
+#   → Container Image: <your-dockerhub>/apex-runpod:latest
+#   → GPU: RTX 3090 / RTX 4090 / A100 (anything with 24GB+ VRAM)
+#   → Min Workers: 0 (scale to zero when idle)
+#   → Max Workers: 1
+#
+# Copy the Endpoint ID into the APEX dashboard Training Config → RunPod Endpoint ID.
+
+FROM runpod/pytorch:2.2.0-py3.10-cuda12.1.1-devel-ubuntu22.04
+
+# ── System dependencies ────────────────────────────────────────────────────────
+RUN apt-get update -qq && apt-get install -y -q cmake build-essential git && \
+    rm -rf /var/lib/apt/lists/*
+
+# ── Python dependencies ────────────────────────────────────────────────────────
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir \
+        runpod \
+        "transformers>=4.40" \
+        "peft>=0.10" \
+        "trl>=0.8" \
+        "bitsandbytes>=0.43" \
+        "datasets>=2.18" \
+        "accelerate>=0.27" \
+        sentencepiece \
+        protobuf
+
+# ── Copy APEX scripts ──────────────────────────────────────────────────────────
+COPY scripts/runpod_handler.py       /handler.py
+COPY scripts/kaggle_finetune_kernel.py /finetune_kernel.py
+
+# ── Entry point ────────────────────────────────────────────────────────────────
+CMD ["python", "-u", "/handler.py"]

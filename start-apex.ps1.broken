@@ -1,0 +1,134 @@
+# APEX Trading System - Unified Startup Script
+# Starts all services in the correct order
+
+$ErrorActionPreference = "Stop"
+
+Write-Host ""
+Write-Host "═══════════════════════════════════════════════════════════" -ForegroundColor Cyan
+Write-Host "  APEX TRADING SYSTEM - STARTUP" -ForegroundColor Yellow
+Write-Host "═══════════════════════════════════════════════════════════" -ForegroundColor Cyan
+Write-Host ""
+
+# Check virtual environment
+if (-not (Test-Path ".venv")) {
+    Write-Host "✗ Virtual environment not found at .venv" -ForegroundColor Red
+    Write-Host "  Run: python -m venv .venv" -ForegroundColor Yellow
+    exit 1
+}
+
+# Activate virtual environment
+Write-Host "[1/4] Activating virtual environment..." -ForegroundColor Cyan
+& .\.venv\Scripts\Activate.ps1
+Write-Host "  ✓ Virtual environment activated" -ForegroundColor Green
+
+# Check configuration
+Write-Host ""
+Write-Host "[2/4] Checking configuration..." -ForegroundColor Cyan
+if (-not (Test-Path ".env")) {
+    Write-Host "  ⚠ .env file not found - using defaults" -ForegroundColor Yellow
+}
+else {
+    Write-Host "  ✓ Configuration loaded from .env" -ForegroundColor Green
+}
+
+# Start Ollama if not running
+Write-Host ""
+Write-Host "[3/4] Ensuring Ollama is running..." -ForegroundColor Cyan
+$ollamaProcess = Get-Process -Name "ollama" -ErrorAction SilentlyContinue
+if ($ollamaProcess) {
+    Write-Host "  ✓ Ollama is already running (PID: $($ollamaProcess.Id))" -ForegroundColor Green
+}
+else {
+    Write-Host "  Starting Ollama service..." -ForegroundColor Yellow
+    try {
+        Start-Process -FilePath "ollama" -ArgumentList "serve" -WindowStyle Hidden
+        Start-Sleep -Seconds 3
+        $ollamaProcess = Get-Process -Name "ollama" -ErrorAction SilentlyContinue
+        if ($ollamaProcess) {
+            Write-Host "  ✓ Ollama started successfully (PID: $($ollamaProcess.Id))" -ForegroundColor Green
+        }
+        else {
+            Write-Host "  ⚠ Ollama failed to start - LLM tier 1 will be unavailable" -ForegroundColor Yellow
+        }
+    }
+    catch {
+        Write-Host "  ⚠ Could not start Ollama: $_" -ForegroundColor Yellow
+        Write-Host "  LLM will fall back to Groq/DeepSeek/Claude" -ForegroundColor Gray
+    }
+}
+
+# Start services
+Write-Host ""
+Write-Host "[4/4] Starting services..." -ForegroundColor Cyan
+
+# Kill any existing processes on ports 8000 and 8001
+$portsToCheck = @(8000, 8001)
+foreach ($port in $portsToCheck) {
+    $existing = Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue
+    if ($existing) {
+        $pid = $existing.OwningProcess | Select-Object -First 1
+        Write-Host "  Stopping existing process on port $port (PID: $pid)..." -ForegroundColor Yellow
+        Stop-Process -Id $pid -Force -ErrorAction SilentlyContinue
+        Start-Sleep -Seconds 1
+    }
+}
+
+# Start trading bot (port 8000)
+Write-Host "  Starting Trading Bot (port 8000)..." -ForegroundColor White
+$botJob = Start-Job -ScriptBlock {
+    param($venvPath, $workDir)
+    Set-Location $workDir
+    & "$venvPath\Scripts\python.exe" main.py --mode full --autostart --port 8000
+} -ArgumentList (Resolve-Path ".venv"), (Get-Location)
+
+Start-Sleep -Seconds 3
+
+# Check if bot started
+$botRunning = Get-NetTCPConnection -LocalPort 8000 -State Listen -ErrorAction SilentlyContinue
+if ($botRunning) {
+    Write-Host "    ✓ Trading Bot started successfully" -ForegroundColor Green
+}
+else {
+    Write-Host "    ✗ Trading Bot failed to start" -ForegroundColor Red
+    Write-Host "    Check logs for errors" -ForegroundColor Yellow
+}
+
+# Start dashboard backend (port 8001)
+Write-Host "  Starting Dashboard Backend (port 8001)..." -ForegroundColor White
+$dashboardJob = Start-Job -ScriptBlock {
+    param($venvPath, $workDir)
+    Set-Location $workDir
+    & "$venvPath\Scripts\python.exe" -m api.dashboard_backend
+} -ArgumentList (Resolve-Path ".venv"), (Get-Location)
+
+Start-Sleep -Seconds 2
+
+# Check if dashboard started
+$dashboardRunning = Get-NetTCPConnection -LocalPort 8001 -State Listen -ErrorAction SilentlyContinue
+if ($dashboardRunning) {
+    Write-Host "    ✓ Dashboard Backend started successfully" -ForegroundColor Green
+}
+else {
+    Write-Host "    ✗ Dashboard Backend failed to start" -ForegroundColor Red
+}
+
+Write-Host ""
+Write-Host "═══════════════════════════════════════════════════════════" -ForegroundColor Green
+Write-Host "  APEX SYSTEM READY" -ForegroundColor Yellow
+Write-Host "═══════════════════════════════════════════════════════════" -ForegroundColor Green
+Write-Host ""
+Write-Host "Services:" -ForegroundColor White
+Write-Host "  • Trading Bot:        http://localhost:8000" -ForegroundColor Cyan
+Write-Host "  • Dashboard Backend:  http://localhost:8001" -ForegroundColor Cyan
+Write-Host "  • Dashboard Frontend: http://localhost:3000 (start separately)" -ForegroundColor Yellow
+Write-Host ""
+Write-Host "To start the frontend dashboard:" -ForegroundColor White
+Write-Host "  cd frontend/dashboard" -ForegroundColor Cyan
+Write-Host "  npm run dev" -ForegroundColor Cyan
+Write-Host ""
+Write-Host "To stop all services:" -ForegroundColor White
+Write-Host "  .\stop-apex.ps1" -ForegroundColor Cyan
+Write-Host ""
+Write-Host "Services are running in the background." -ForegroundColor Green
+Write-Host "Check logs in the dashboard or use: Get-Job | Receive-Job" -ForegroundColor Gray
+Write-Host ""

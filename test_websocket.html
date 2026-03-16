@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Connection Test</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-top: 0;
+        }
+        .status {
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .status.connecting {
+            background: #fff3cd;
+            color: #856404;
+        }
+        .status.connected {
+            background: #d4edda;
+            color: #155724;
+        }
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .messages {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+        .message {
+            margin: 5px 0;
+            padding: 5px;
+            border-left: 3px solid #007bff;
+            background: white;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+        .info {
+            background: #e7f3ff;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 20px 0;
+            border-left: 4px solid #007bff;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔌 WebSocket Connection Test</h1>
+        
+        <div class="info">
+            <strong>Testing:</strong> Direct connection to backend WebSocket endpoint<br>
+            <strong>URL:</strong> <code id="ws-url">ws://localhost:8001/ws/dashboard</code>
+        </div>
+
+        <div id="status" class="status connecting">
+            ⏳ Connecting...
+        </div>
+
+        <div>
+            <button id="connect-btn" onclick="connect()">Connect</button>
+            <button id="disconnect-btn" onclick="disconnect()" disabled>Disconnect</button>
+            <button onclick="clearMessages()">Clear Messages</button>
+        </div>
+
+        <h3>Messages:</h3>
+        <div id="messages" class="messages">
+            <div class="message">Waiting for connection...</div>
+        </div>
+    </div>
+
+    <script>
+        let ws = null;
+        const statusEl = document.getElementById('status');
+        const messagesEl = document.getElementById('messages');
+        const connectBtn = document.getElementById('connect-btn');
+        const disconnectBtn = document.getElementById('disconnect-btn');
+        const wsUrl = 'ws://localhost:8001/ws/dashboard';
+
+        function addMessage(msg, type = 'info') {
+            const div = document.createElement('div');
+            div.className = 'message';
+            div.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+            messagesEl.appendChild(div);
+            messagesEl.scrollTop = messagesEl.scrollHeight;
+        }
+
+        function updateStatus(text, className) {
+            statusEl.textContent = text;
+            statusEl.className = `status ${className}`;
+        }
+
+        function connect() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                addMessage('Already connected!');
+                return;
+            }
+
+            addMessage(`Attempting to connect to ${wsUrl}...`);
+            updateStatus('⏳ Connecting...', 'connecting');
+
+            try {
+                ws = new WebSocket(wsUrl);
+
+                ws.onopen = () => {
+                    addMessage('✅ WebSocket connected successfully!');
+                    updateStatus('✅ Connected', 'connected');
+                    connectBtn.disabled = true;
+                    disconnectBtn.disabled = false;
+                };
+
+                ws.onmessage = (event) => {
+                    try {
+                        const data = JSON.parse(event.data);
+                        addMessage(`📨 Received: ${JSON.stringify(data, null, 2)}`);
+                    } catch (e) {
+                        addMessage(`📨 Received (raw): ${event.data}`);
+                    }
+                };
+
+                ws.onerror = (error) => {
+                    addMessage(`❌ WebSocket error occurred`);
+                    console.error('WebSocket error:', error);
+                };
+
+                ws.onclose = (event) => {
+                    addMessage(`🔌 WebSocket closed (code: ${event.code}, reason: ${event.reason || 'none'})`);
+                    updateStatus('❌ Disconnected', 'error');
+                    connectBtn.disabled = false;
+                    disconnectBtn.disabled = true;
+                };
+            } catch (error) {
+                addMessage(`❌ Failed to create WebSocket: ${error.message}`);
+                updateStatus('❌ Connection Failed', 'error');
+                console.error('Connection error:', error);
+            }
+        }
+
+        function disconnect() {
+            if (ws) {
+                addMessage('Closing connection...');
+                ws.close();
+                ws = null;
+            }
+        }
+
+        function clearMessages() {
+            messagesEl.innerHTML = '';
+        }
+
+        // Auto-connect on page load
+        window.onload = () => {
+            addMessage('Page loaded. Click "Connect" to test WebSocket connection.');
+            addMessage('Make sure the backend is running on port 8001!');
+        };
+    </script>
+</body>
+</html>
