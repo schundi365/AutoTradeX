@@ -32,8 +32,8 @@ redis==5.1.1                  # Cache & pub/sub
 timescaledb                   # Time-series extension (install via SQL)
 
 # ── API & WEBSOCKET SERVER ───────────────────────────────
-fastapi==0.115.0
-uvicorn==0.31.0
+fastapi==0.135.1
+uvicorn==0.42.0
 websockets==13.1
 python-dotenv==1.0.1
 
