@@ -29,7 +29,7 @@ scipy>=1.11.0,<1.15.0  # Statistical functions for A/B testing
 stable-baselines3>=2.0.0,<3.0.0  # Reinforcement learning (PPO agents)
 
 # ── VECTOR STORE ─────────────────────────────────────────
-chromadb>=0.4.0,<0.6.0
+chromadb>=0.4.0,<1.6.0
 
 # ── ONNX (optional — for local inference) ────────────────
 onnxruntime>=1.16.0,<1.20.0
