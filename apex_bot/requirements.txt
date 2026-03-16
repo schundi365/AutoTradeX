@@ -16,7 +16,7 @@ pandas-ta==0.3.14b            # Technical indicators
 newsapi-python==0.2.7
 requests==2.32.3
 feedparser==6.0.11            # RSS feeds (Reuters, BBC, etc.)
-gdelt==0.1.10                 # GDELT geopolitical database
+gdelt==0.1.14                 # GDELT geopolitical database
 
 # ── AI & NLP ─────────────────────────────────────────────
 anthropic==0.34.2
