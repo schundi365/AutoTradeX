@@ -27,7 +27,7 @@ torch==2.4.1
 pandas==2.2.3
 numpy==2.1.1
 sqlalchemy==2.0.35
-asyncpg==0.30.0               # Async PostgreSQL
+asyncpg==0.31.0               # Async PostgreSQL
 redis==5.1.1                  # Cache & pub/sub
 timescaledb                   # Time-series extension (install via SQL)
 
