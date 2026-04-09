@@ -50,5 +50,5 @@ loguru==0.7.2
 prometheus-client==0.21.0
 
 # ── NOTIFICATIONS ────────────────────────────────────────
-python-telegram-bot==21.6
+python-telegram-bot==22.6
 slack-sdk==3.33.0
