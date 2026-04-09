@@ -19,7 +19,7 @@ jobs:
     environment: staging
     if: github.event_name == 'push' || github.event.inputs.environment == 'staging'
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
       
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -61,7 +61,7 @@ jobs:
     environment: production
     if: github.event_name == 'push' || github.event.inputs.environment == 'production'
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
       
       - name: Set up Python
         uses: actions/setup-python@v4
