@@ -32,7 +32,7 @@ stable-baselines3>=2.0.0,<3.0.0  # Reinforcement learning (PPO agents)
 chromadb>=0.4.0,<0.6.0
 
 # ── ONNX (optional — for local inference) ────────────────
-onnxruntime>=1.16.0,<1.20.0
+onnxruntime>=1.16.0,<1.25.0
 # skl2onnx  # uncomment if using ONNX model export
 
 # ── BROKERS ──────────────────────────────────────────────
