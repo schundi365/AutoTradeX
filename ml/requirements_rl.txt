@@ -3,7 +3,7 @@
 
 # Core RL libraries
 gymnasium>=0.29.0
-stable-baselines3>=2.0.0
+stable-baselines3>=2.8.0
 
 # Dependencies (may already be installed)
 numpy>=1.24.0
